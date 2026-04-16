@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Survival Street - Mini GTA Style</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style>
+        body { margin: 0; background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 4px solid #444; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 0 }, debug: false }
+    },
+    scene: { preload: preload, create: create, update: update }
+};
+
+let player, cursors, bullets, enemies, score = 0, scoreText;
+const game = new Phaser.Game(config);
+
+function preload() {
+    // No images needed, we'll use rectangles
+}
+
+function create() {
+    // 1. Background (Road)
+    this.add.grid(400, 300, 800, 600, 40, 40, 0x333333).setOutlineStyle(0x444444);
+
+    // 2. Player (Green Square)
+    player = this.add.rectangle(400, 300, 30, 30, 0x00ff00);
+    this.physics.add.existing(player);
+    player.body.setCollideWorldBounds(true);
+
+    // 3. Groups
+    bullets = this.physics.add.group();
+    enemies = this.physics.add.group();
+
+    // 4. UI
+    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '24px', fill: '#fff', fontFamily: 'Arial' });
+
+    // 5. Enemy Spawning (Har 1.5 second mein ek zombie)
+    this.time.addEvent({
+        delay: 1500,
+        callback: spawnEnemy,
+        callbackScope: this,
+        loop: true
+    });
+
+    // 6. Controls
+    cursors = this.input.keyboard.createCursorKeys();
+
+    // 7. Shooting (Click to shoot)
+    this.input.on('pointerdown', (pointer) => {
+        let bullet = this.add.circle(player.x, player.y, 5, 0xffff00);
+        bullets.add(bullet);
+        this.physics.add.existing(bullet);
+        this.physics.moveTo(bullet, pointer.x, pointer.y, 400);
+    });
+
+    // 8. Collisions (Goli lagne par zombie khatam)
+    this.physics.add.overlap(bullets, enemies, (bullet, enemy) => {
+        bullet.destroy();
+        enemy.destroy();
+        score += 10;
+        scoreText.setText('Score: ' + score);
+    });
+
+    // 9. Game Over (Zombie choo jaye toh)
+    this.physics.add.overlap(player, enemies, () => {
+        this.physics.pause();
+        player.setFillStyle(0xff0000);
+        alert("GAME OVER! Your Score: " + score);
+        location.reload();
+    });
+}
+
+function spawnEnemy() {
+    let x, y;
+    if (Math.random() > 0.5) {
+        x = Math.random() > 0.5 ? 0 : 800;
+        y = Math.random() * 600;
+    } else {
+        x = Math.random() * 800;
+        y = Math.random() > 0.5 ? 0 : 600;
+    }
+    
+    let enemy = this.add.rectangle(x, y, 30, 30, 0xff4444);
+    enemies.add(enemy);
+    this.physics.add.existing(enemy);
+    
+    // Score ke saath speed badhegi
+    let speed = 100 + (score / 5);
+    this.physics.moveToObject(enemy, player, speed);
+}
+
+function update() {
+    player.body.setVelocity(0);
+
+    // Movement
+    if (cursors.left.isDown) player.body.setVelocityX(-250);
+    else if (cursors.right.isDown) player.body.setVelocityX(250);
+
+    if (cursors.up.isDown) player.body.setVelocityY(-250);
+    else if (cursors.down.isDown) player.body.setVelocityY(250);
+    
+    // Player mouse ki taraf dekhega (Rotation feel)
+    let angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.x, this.input.y);
+    player.setRotation(angle);
+}
+</script>
+</body>
+</html>
